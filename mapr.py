@@ -54,6 +54,10 @@ Answer:
 # {{~/assistant}}
 # """
 
+#### TODO:
+# 1. Tackle rewriting the prompt, creating a task for each platform.
+# 2. Tackle reducing the results from each task.
+
 @task
 def generate_a_list(input: str = None) -> list:
     # Generate a list of queries or platforms to search for frontend engineers in the bay area.
@@ -133,4 +137,4 @@ def main(task="Find Top 10 Frontend Engineers"):
 
 # main("Post on social media saying 'hi, hope you are having a great day!'")
 # main("Find Top 10 Frontend Engineers")
-main("")
+main("Buy a Apple Macbook Pro and compare across sites to see where is the cheapest")
