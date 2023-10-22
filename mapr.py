@@ -114,13 +114,8 @@ def execute_single_agent_task(task: str = None, url: str = "https://www.google.c
     except Exception as e:
       print(f"ERROR: {e}")
         
-    closed_session = multion.close_session(tabId=tabId)
-    print("closed session")
-    print(list(closed_session.keys()))
-    print("Session ID: ", closed_session['session_id'])
-    print("Message: ", closed_session['message'])
-    print("Status: ", closed_session['status'])
-    return closed_session
+    multion.close_session(tabId=tabId)
+    print("Done")
 
 
 @flow(name="My Flow",
@@ -138,4 +133,4 @@ def main(task="Find Top 10 Frontend Engineers"):
 
 # main("Post on social media saying 'hi, hope you are having a great day!'")
 # main("Find Top 10 Frontend Engineers")
-main("Find Top 10 Frontend Engineers")
+main("")
