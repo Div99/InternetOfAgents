@@ -59,11 +59,9 @@ def generate_a_list(input: str = None) -> list:
     # Generate a list of queries or platforms to search for frontend engineers in the bay area.
     experts = guidance(list_prompt, llm=gpt4)
     executed_program = experts(query=input) # Example platforms
-    print("executed_program")
-    print(executed_program)
     urls = executed_program["answers"].split("\n")
     print(f"Returned URLS are: {urls}")
-    return urls
+    return urls[:3]
 
 @task
 def reduce(platforms: list) -> list:
@@ -94,9 +92,9 @@ def _login():
     print("Logged in...")
 
 @task(retries=3, retry_delay_seconds=10)
-def execute_single_agent_task(input: str = None, url: str = "https://www.google.com", tabId: str = None):
+def execute_single_agent_task(task: str = None, url: str = "https://www.google.com", tabId: str = None):
     _login()
-    new_input = input + ". Do not ask for user input." 
+    new_input = task + ". Do not ask for user input." 
     session = multion.new_session(data={"input": new_input, "url": url})
     tabId = session['session_id']
     print(f"Session ID: {tabId}")
@@ -130,10 +128,14 @@ def execute_single_agent_task(input: str = None, url: str = "https://www.google.
 def main(task="Find Top 10 Frontend Engineers"):
     platforms = generate_a_list(task)
     reduced_platforms = reduce(platforms)
-    sessions = execute_single_agent_task.map(url=reduced_platforms, input=task)
+    sessions = []
+    for platform in reduced_platforms:
+        session = execute_single_agent_task.submit(task=task, url=platform)
+        sessions.append(session)
     final_result = final_reduce(sessions)
     notification = notify_user(final_result)
 
 
 # main("Post on social media saying 'hi, hope you are having a great day!'")
+# main("Find Top 10 Frontend Engineers")
 main("Find Top 10 Frontend Engineers")
