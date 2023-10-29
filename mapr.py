@@ -77,8 +77,9 @@ Answer:
 # """
 
 #### TODO:
-# 1. Tackle rewriting the prompt, creating a task for each platform.
-# 2. Tackle reducing the results from each task.
+# 1. Improve the accuracy of the use case here
+# 2. Do the script 10 times to measure accuracy
+# 3. Create a function to aggregate the results back to users
 
 class MultionToolSpec:
     """MultiOn tool spec."""
