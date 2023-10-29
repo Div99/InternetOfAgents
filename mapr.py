@@ -16,22 +16,25 @@ gpt4 = guidance.llms.OpenAI("gpt-4")
 list_prompt = """
 {{#system~}}
 You are an expert task manager that manages parallel agents that each does one task, only list the websites that made sense for the task:
+You should generate the url in the full format such as https://www.linkedin.com and followed by ", " and then the detailed input prompt which is a step by step plan for the agent to execute. After each step, verify its done correctly. 
 {{~/system}}
 
 {{#user~}}
-Find Top 10 Frontend Engineers in the Austen area
-Answer:
-https://www.linkedin.com
-https://www.indeed.com
-https://www.glassdoor.com
-
 {{query}}
 Answer:
 {{~/user}}
+
 {{#assistant~}}
 {{gen 'answers' temperature=0 max_tokens=300}}
 {{~/assistant}}
 """
+
+
+# Evangelize AI Engineers Foundation (discord: https://discord.gg/TWPGzd2vwp, website: aie.foundation) in the Bay Area on professional jobs' site. 
+# Answer:
+# https://www.linkedin.com, 1. Go to linkedin.com 2. Search for AI engineers in Bay Area 3. Click see more to get to 5 results 4. Click on the first 5 profiles 5. Send them each a message "Hi, I am on twitter as hackgoofer, I would love to learn if you can follow our account: AI Engineer Foundation to support other AI Engineers;"
+# https://www.stackoverflow.com, 1. Go to www.stackoverflow.com 2. Find posts related to AI Engineers 3. Evangelize our discord by posting on the site
+# https://www.reddit.com/r/machinelearning, 1. Go to https://www.reddit.com/r/machinelearning 2. Search for AI Engineer job posts 3. If there are people asking for job resources, post on the site saying "You can learn more about AI Engineering at our foundation discord, <link here>"
 
 # reduce_prompt = """
 # {{#system~}}
@@ -63,13 +66,17 @@ def generate_a_list(input: str = None) -> list:
     # Generate a list of queries or platforms to search for frontend engineers in the bay area.
     experts = guidance(list_prompt, llm=gpt4)
     executed_program = experts(query=input) # Example platforms
-    urls = executed_program["answers"].split("\n")
+    urls_data = executed_program["answers"].split("\n")
+    urls = [urldata.split(", ")[0] for urldata in urls_data if len(urldata) != 0]
+    steps = [", ".join(urldata.split(", ")[1:]) for urldata in urls_data if len(urldata) != 0]
+    
     print(f"Returned URLS are: {urls}")
-    return urls[:3]
+    print(f"Returned steps are: {steps}")
+    return urls[:3], steps[:3]
 
 @task
-def reduce(platforms: list) -> list:
-    return platforms
+def reduce(platforms: list, steps: list) -> list:
+    return platforms, steps
 
 @task
 def execute_the_task(platform: str, input: str="") -> dict:
@@ -124,12 +131,12 @@ def execute_single_agent_task(task: str = None, url: str = "https://www.google.c
 
 @flow(name="My Flow",
       task_runner=ConcurrentTaskRunner())
-def main(task="Find Top 10 Frontend Engineers"):
-    platforms = generate_a_list(task)
-    reduced_platforms = reduce(platforms)
+def main(task):
+    platforms, steps = generate_a_list(task)
     sessions = []
-    for platform in reduced_platforms:
-        session = execute_single_agent_task.submit(task=task, url=platform)
+    for platform, step in zip(platforms, steps):
+        print(f"executing step {step} on platform {platform}")
+        session = execute_single_agent_task.submit(task=step, url=platform)
         sessions.append(session)
     final_result = final_reduce(sessions)
     notification = notify_user(final_result)
@@ -137,4 +144,10 @@ def main(task="Find Top 10 Frontend Engineers"):
 
 # main("Post on social media saying 'hi, hope you are having a great day!'")
 # main("Find Top 10 Frontend Engineers")
-main("Buy a Apple Macbook Pro and compare across sites to see where is the cheapest")
+main("""
+Go on both linkedin and twitter and make sure you are on the account "AI Engineer Foundation", and only then make a poll with the question: 'Do you think really powerful AGI should be open source?' and two options: 'Yes', 'No'
+""")
+# main("""
+# 1. Go to twitter.com 2. Log in to the AI Engineer Foundation account 3. Click on the 'Tweet' button 4. Select the option to create a poll 5. Enter the question 'Do you think really powerful AGI should be open source?' 6. Add two options: 'Yes'", "'No' 7. Tweet the poll
+# """)
+# main("""go to twitter to switch account onto AI engineer foundation""") # works!
