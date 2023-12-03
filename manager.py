@@ -17,7 +17,7 @@ from openai import OpenAI
 from pydantic import BaseModel
 from type import Status, Task, TaskList
 from worker import WorkerAgent
-from graph import visualize_task_list
+from viz import visualize_task_list
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
