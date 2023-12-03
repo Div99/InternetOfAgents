@@ -2,9 +2,7 @@ from prefect import task, flow
 import multion
 from datetime import timedelta
 import openai
-import guidance
 
-gpt4 = guidance.llms.OpenAI("gpt-4")
 
 agent_task_prompt = """
 {{#system~}}

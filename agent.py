@@ -1,32 +1,66 @@
-from prefect import task, flow
-import requests
-import random
-import string
-import multion
-import os
 import openai
-from prefect.task_runners import ConcurrentTaskRunner
-from enum import Enum
-from typing import Optional
-import guidance
-
-# from utils import LLMAdapter
-
-import instructor
-from openai import OpenAI
-from pydantic import BaseModel
-from type import Status, Task, TaskList
-from worker import WorkerAgent
-from graph import visualize_task_list
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
+from functools import lru_cache
+from utils import LLMAdapter
+import multion
 
 
-class ManagerAgent:
+class Agent:
+    def __init__(self, agent_type:str="openai", model_name:str="gpt4", model_configs=None) -> None:
+        self.client = LLMAdapter(url_or_name=model_name, use_openai=(agent_type=="openai"), configs=model_configs)
+        self._login()
+
+    def _login(self):
+        multion.login()
+        # Check for token verification error here
+        response = multion.set_remote(False)
+        print("Logged in to MultiON:", response)
+
+
+class WorkerAgent(Agent):
+    def __init__(self, agent_type:str="openai", model_name:str="gpt4", model_configs=None) -> None:
+        super().__init__(agent_type=agent_type, model_name=model_name, model_configs=model_configs)
+        self.session_id = None
+
+    def _start_session(self, input_command, url):
+        response = multion.new_session({"input": input_command, "url": url})
+        self.session_id = response['session_id']
+        print("New session started:", response['message'])
+        print("Session ID:", self.session_id)
+
+    def _update_session(self, input_command, url):
+        response = multion.update_session(self.session_id, {"input": input_command, "url": url})
+        print("Session updated:", response['message'])
+        return response
+
+    def _close_session(self):
+        response = multion.close_session(self.session_id)
+        print("Session closed:", response)
+        self.session_id = None
+
+    @task(retries=3, retry_delay_seconds=10)
+    def perform_task(self, input: str, url: str):
+        self._start_session(input, url)
+        new_input = input + ". Do not ask for user input."
+
+        should_continue = True
+        try:
+            while should_continue:
+                updated_session = self._update_session(new_input, url)
+                should_continue = updated_session["status"] == "CONTINUE"
+                print("updated_session")
+                print(list(updated_session.keys()))
+                self.session_id = updated_session["session_id"]
+        except Exception as e:
+            print(f"ERROR: {e}")
+
+        self._close_session()
+
+
+class ManagerAgent(Agent):
     def __init__(
         self,
         objective: str = "",
-        model_name: str = "gpt-4-1106-preview",
+        model_name: str = "gpt-4",
         use_openai=True,
     ):
         # List of tasks to be performed per agent
@@ -36,38 +70,28 @@ class ManagerAgent:
         self.objective = objective
 
         if use_openai:
-            self.client = instructor.patch(OpenAI())
-            # self.client = LLMAdapter(model_name, use_openai=True)
             self.llm = guidance.llms.OpenAI(model_name)
         else:
             raise NotImplementedError
-            self.client = LLMAdapter(model_name, use_openai=False)
             self.llm = ""  # use huggingface via Text Generation Inference Interface
 
-    def generate_tasks(self, objective: str) -> TaskList:
-        self.system_prompt = "You are an expert task manager that manages agents that each does one task. You decide how many agents is needed to do the meta-task, and what each agent's task is. The agents tasks should be done in parallel."
+    def generate(self, objective: str) -> TaskList:
+        self.system_prompt = "You are an expert task manager that manages agents that each does one task. You decide how many agents is needed to do the meta-task, and what each agent's task is. The agents tasks should be done in parallel"
 
-        self.user_prompt = f"""
+        self.user_prompt = """
                 Create the tasks items for the following objective: {objective}
                 """
 
-        return self.client.chat.completions.create(
-            model="gpt-4-1106-preview",
-            response_model=TaskList,
-            messages=[
-                {
-                    "role": "system",
-                    "content": self.system_prompt,
-                },
-                {
-                    "role": "user",
-                    "content": self.user_prompt,
-                },
-            ],
+        return self.llm.generate(
+            self.system_prompt,
+            self.user_prompt,
+            max_tokens=100,
+            temperature=0.7,
+            top_p=1.0,
+            frequency_penalty=0.5,
+            presence_penalty=0.0,
+            stop=["\n\n"],
         )
-        # return self.client.generate(
-        #     self.system_prompt, self.user_prompt, response_model=TaskList
-        # )
 
     # Function to generate a random email
     def generate_random_email(self) -> str:
@@ -85,41 +109,35 @@ class ManagerAgent:
 
     @task(retries=3, retry_delay_seconds=10)
     def execute_single_agent_task(
-        self,
-        task: Task,
-        sessionId: str = None,
+        self, input: str = None, url: str = "https://www.google.com", tabId: str = None
     ):
-        print(f"WORKER GOT TASK: {task}")
-        input = task.cmd
-        url = task.url
-
         self._login()
         new_input = input + ". Do not ask for user input."
         session = multion.new_session(data={"input": new_input, "url": url})
-        sessionId = session["session_id"]
-        print(f"Session ID: {sessionId}")
+        tabId = session["session_id"]
+        print(f"Session ID: {tabId}")
 
         updated_session = multion.update_session(
-            sessionId=sessionId, data={"input": new_input, "url": url}
+            tabId=tabId, data={"input": new_input, "url": url}
         )
-        sessionId = updated_session["session_id"]
+        tabId = updated_session["session_id"]
         print("updated_session")
         print(list(updated_session.keys()))
         should_continue = updated_session["status"] == "CONTINUE"
         try:
             while should_continue:
                 updated_session = multion.update_session(
-                    sessionId=sessionId,
+                    tabId=tabId,
                     data={"input": new_input, "url": updated_session["url"]},
                 )
                 should_continue = updated_session["status"] == "CONTINUE"
                 print("updated_session")
                 print(list(updated_session.keys()))
-                sessionId = updated_session["session_id"]
+                tabId = updated_session["session_id"]
         except Exception as e:
             print(f"ERROR: {e}")
 
-        closed_session = multion.close_session(sessionId=sessionId)
+        closed_session = multion.close_session(tabId=tabId)
         print("closed session")
         print(list(closed_session.keys()))
         print("Session ID: ", closed_session["session_id"])
@@ -176,38 +194,20 @@ class ManagerAgent:
         print(f"Returned steps are: {steps}")
         return urls[:3], steps[:3]
 
+    @flow(name="My Flow", task_runner=ConcurrentTaskRunner())
+    def main(self, objective: str):
+        cmds, urls = self.generate(objective)
 
-@flow(name="My Flow", task_runner=ConcurrentTaskRunner())
-def main(manager, objective: str):
-    # Generate the tasks for the agents
-    output_dict = manager.generate_tasks(objective)
-    print(output_dict)
+        # Since we're running multiple tasks in parallel, we use Prefect's mapping to execute the same task with different inputs.
+        # In this case, since the input is constant, we use 'unmapped' to prevent Prefect from trying to map over it.
+        tasks = self.execute_single_agent_task.map(input=cmds, url=urls)
+        self.tasks.extend(tasks)  # Add the tasks to the task list
 
-    tasks = output_dict.tasks
-    manager.tasks.extend(tasks)  # Add the tasks to the task list
-    visualize_task_list(tasks)
+        final_result = self.final_reduce(tasks)
+        # Notify the user; this could also be sending an email, logging the result, etc.
+        notification = self.notify_user(final_result)
+        return notification
 
-    cmds = [task.cmd for task in tasks]
-    urls = [task.url for task in tasks]
-
-    # Since we're running multiple tasks in parallel, we use Prefect's mapping to execute the same task with different inputs.
-    # In this case, since the input is constant, we use 'unmapped' to prevent Prefect from trying to map over it.
-    # Use map to execute perform_task for each cmd and url
-    results = WorkerAgent.perform_task.map(cmds, urls)
-
-    print("Results: ", results)
-    # Reduce phase: process results as needed
-    final_result = manager.final_reduce(manager, results)
-
-    # final_result = manager.final_reduce(tasks)
-    # Notify the user; this could also be sending an email, logging the result, etc.
-    notification = manager.notify_user(final_result)
-    return notification
-
-
-# main("Post on social media saying 'hi, hope you are having a great day!'")
-# main("Find Top 10 Frontend Engineers")
-# objective = "Go on linkedin, twitter, facebook and make a post promoting my company's new product 'AGI'"
-objective = "Find Top 10 Frontend Engineers on linkedin."
-manager_agent = ManagerAgent()
-main(manager_agent, objective)
+    # Run the flow
+    def run(self, objective: str):
+        self.main(objective)
