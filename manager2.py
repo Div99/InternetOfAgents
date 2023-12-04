@@ -6,6 +6,9 @@ import multion
 import os
 import openai
 from prefect.task_runners import ConcurrentTaskRunner
+from prefect import Flow, Parameter, unmapped, Task
+from typing import Any, Dict
+from time import sleep
 from enum import Enum
 from typing import Optional
 import guidance
@@ -15,7 +18,7 @@ import guidance
 import instructor
 from openai import OpenAI
 from pydantic import BaseModel
-from type import Status, Task, TaskList
+from type import Status, Task, TaskList, VerifyResult
 from worker import WorkerAgent
 from viz import visualize_task_list
 
@@ -43,6 +46,47 @@ class ManagerAgent:
             raise NotImplementedError
             self.client = LLMAdapter(model_name, use_openai=False)
             self.llm = ""  # use huggingface via Text Generation Inference Interface
+
+    def verify_task(self, criteria: str, final_state_image: any) -> TaskList:
+        system_prompt = "You are an expert task verification agent that verifies if a task was done correctly based on the screenshot of the final state of the task and the criteria provided."
+
+        user_prompt = f"""
+                Compare the provided image and the criteria provided in the ideal response.  If the image meets the criteria, assign a score of true, otherwise assign a score of false.  This represents the overall performance of the AI agent on the task: {criteria}
+                """
+
+        return self.clientclient.chat.completions.create(
+            response_model=VerifyResult,
+            model="gpt-4-vision-preview",
+            max_tokens=300,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": user_prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{final_state_image}"
+                            },
+                        },
+                    ],
+                },
+            ],
+        )
+        # return self.client.generate(
+        #     self.system_prompt, self.user_prompt, response_model=TaskList
+        # )
+
+    def verify_task(self, task: Task, result: Any) -> bool:
+        # Implement your verification logic here
+        # This is a placeholder function
+        return True
+
+    def handle_failover(self, task: Task, state: State) -> None:
+        # Implement your failover logic here
+        # This is a placeholder function
+        pass
 
     def generate_tasks(self, objective: str) -> TaskList:
         self.system_prompt = "You are an expert task manager that manages agents that each does one task. You decide how many agents is needed to do the meta-task, and what each agent's task is. The agents tasks should be done in parallel."
@@ -193,11 +237,23 @@ def main(manager, objective: str):
     # Since we're running multiple tasks in parallel, we use Prefect's mapping to execute the same task with different inputs.
     # In this case, since the input is constant, we use 'unmapped' to prevent Prefect from trying to map over it.
     # Use map to execute perform_task for each cmd and url
+    # Add failover handling
     results = WorkerAgent.perform_task.map(cmds, urls)
+
+    # Add verification step
+    verified_results = manager.verify_task.map(unmapped(manager), results)
+
+    verified_results = if_else(
+        any_failed(verified_results),
+        manager.handle_failover(unmapped(manager), verified_results),
+        verified_results,
+    )
+
+    final_result = merge(results, verified_results)
 
     print("Results: ", results)
     # Reduce phase: process results as needed
-    final_result = manager.final_reduce(manager, results)
+    final_result = manager.final_reduce(unmapped(manager), results)
 
     # final_result = manager.final_reduce(tasks)
     # Notify the user; this could also be sending an email, logging the result, etc.

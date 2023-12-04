@@ -1,53 +1,18 @@
 // Task List
 digraph {
-	1 [label="Name: Search for Frontend Engineers
-Description: Perform a search on LinkedIn for Frontend Engineers.
-Cmd: Search LinkedIn for Frontend Engineers
+	1 [label="Name: LinkedIn Post
+Description: Make a post on LinkedIn promoting the new product 'AGI'.
+Cmd: Post on LinkedIn promoting company's new product 'AGI'.
 URL: https://www.linkedin.com/
 Status: Status.NOT_ACTIVE" color=blue]
-	2 [label="Name: Filter Results
-Description: Apply filters to the LinkedIn search results to identify top candidates.
-Cmd: Apply filters on LinkedIn to find top Frontend Engineers
-URL: https://www.linkedin.com/search/results/people/
+	2 [label="Name: Twitter Post
+Description: Make a post on Twitter promoting the new product 'AGI'.
+Cmd: Tweet about company's new product 'AGI'.
+URL: https://www.twitter.com/
 Status: Status.NOT_ACTIVE" color=blue]
-	3 [label="Name: Analyze Profiles
-Description: Analyze the profiles of potential candidates to assess suitability.
-Cmd: Review the LinkedIn profiles of potential Frontend Engineer candidates
-URL: https://www.linkedin.com/
-Status: Status.NOT_ACTIVE" color=blue]
-	4 [label="Name: Compile Contact Information
-Description: Compile contact information of the top 10 Frontend Engineers.
-Cmd: Gather contact information for top Frontend Engineers from LinkedIn
-URL: https://www.linkedin.com/
-Status: Status.NOT_ACTIVE" color=blue]
-	5 [label="Name: Rank Candidates
-Description: Rank the found Frontend Engineers based on experience, endorsements, and activity.
-Cmd: Rank the Frontend Engineers based on LinkedIn credentials
-URL: https://www.linkedin.com/
-Status: Status.NOT_ACTIVE" color=blue]
-	6 [label="Name: Review Endorsements and Recommendations
-Description: Review the endorsements and recommendations for each candidate to determine expertise.
-Cmd: Check endorsements and recommendations for Frontend Engineers on LinkedIn
-URL: https://www.linkedin.com/
-Status: Status.NOT_ACTIVE" color=blue]
-	7 [label="Name: Evaluate Project Contributions
-Description: Evaluate past project contributions and portfolio for each candidate.
-Cmd: Evaluate project contributions of Frontend Engineers on LinkedIn
-URL: https://www.linkedin.com/
-Status: Status.NOT_ACTIVE" color=blue]
-	8 [label="Name: Identify Industry Leaders
-Description: Identify industry leaders among the candidates by checking their influence and presence in the field.
-Cmd: Identify industry leaders among Frontend Engineers on LinkedIn
-URL: https://www.linkedin.com/
-Status: Status.NOT_ACTIVE" color=blue]
-	9 [label="Name: Check Education Background
-Description: Check the education background of each candidate to ensure qualification.
-Cmd: Verify the educational qualifications of Frontend Engineers on LinkedIn
-URL: https://www.linkedin.com/
-Status: Status.NOT_ACTIVE" color=blue]
-	10 [label="Name: Validate Work Experience
-Description: Validate the work experience of the candidates by analyzing their work history.
-Cmd: Analyze the work history of Frontend Engineers on LinkedIn
-URL: https://www.linkedin.com/
+	3 [label="Name: Facebook Post
+Description: Make a post on Facebook promoting the new product 'AGI'.
+Cmd: Post on Facebook about company's new product 'AGI'.
+URL: https://www.facebook.com/
 Status: Status.NOT_ACTIVE" color=blue]
 }
