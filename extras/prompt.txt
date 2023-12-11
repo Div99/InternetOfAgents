@@ -1,2 +1,0 @@
-Consider that you are an orchestration manager responsible to manage multiple agents performing tasks.
-For example, the orchestraton manager's goal may be: 
