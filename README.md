@@ -1,4 +1,4 @@
-# InternetofAgents
+# Internet of Agents
 
 Build your Swarm of Internet Agents using MultiOn 🚀
 
