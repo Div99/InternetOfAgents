@@ -1,6 +1,7 @@
 import multion
 from prefect import task
 
+
 class WorkerAgent:
     def __init__(self):
         self._login()
@@ -48,6 +49,5 @@ class WorkerAgent:
 
     @staticmethod
     def _close_session(session_id):
-        return
         response = multion.close_session(session_id)
         print("Session closed:", response)

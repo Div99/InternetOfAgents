@@ -8,7 +8,6 @@ import openai
 from prefect.task_runners import ConcurrentTaskRunner
 from enum import Enum
 from typing import Optional
-import guidance
 
 # from utils import LLMAdapter
 
@@ -38,11 +37,9 @@ class ManagerAgent:
         if use_openai:
             self.client = instructor.patch(OpenAI())
             # self.client = LLMAdapter(model_name, use_openai=True)
-            self.llm = guidance.llms.OpenAI(model_name)
         else:
             raise NotImplementedError
             self.client = LLMAdapter(model_name, use_openai=False)
-            self.llm = ""  # use huggingface via Text Generation Inference Interface
 
     def generate_tasks(self, objective: str) -> TaskList:
         self.system_prompt = "You are an expert task manager that manages agents that each does one task. You decide how many agents is needed to do the meta-task, and what each agent's task is. The agents tasks should be done in parallel."
@@ -156,25 +153,6 @@ class ManagerAgent:
     def notify_user(self, action_results: list) -> None:
         for result in action_results:
             print(f"Notification to User: {result}")
-
-    @task
-    def llm_generate_tasks(self, input: str = None) -> list:
-        # Generate a list of queries or platforms to search for frontend engineers in the bay area.
-        experts = guidance(self.task_prompt, llm=self.llm)
-        print(experts)
-
-        executed_program = experts(query=input)  # Example platforms
-        urls_data = executed_program["answers"].split("\n")
-        urls = [urldata.split(", ")[0] for urldata in urls_data if len(urldata) != 0]
-        steps = [
-            ", ".join(urldata.split(", ")[1:])
-            for urldata in urls_data
-            if len(urldata) != 0
-        ]
-
-        print(f"Returned URLS are: {urls}")
-        print(f"Returned steps are: {steps}")
-        return urls[:3], steps[:3]
 
 
 @flow(name="My Flow", task_runner=ConcurrentTaskRunner())
